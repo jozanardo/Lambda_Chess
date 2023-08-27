@@ -1,6 +1,7 @@
 module Main where
 import Data.Maybe (isNothing)
 import Data.Char (toLower) 
+import System.Random
 
 data Piece = Pawn | Knight | Bishop | Rook | Queen | King deriving Show
 data Color = White | Black deriving (Eq, Show)
@@ -146,26 +147,33 @@ playGame currentPlayer board = do
     putStrLn $ "Jogador atual: " ++ show currentPlayer
     printBoard board
 
-    putStrLn "Digite a posição referente a peça que você quer mexer (ex., '2e'):"
-    fromInput <- getLine
-    let fromPos = parsePosition fromInput
+    if currentPlayer == Black then do
+        newBoard <- makeAIMove Black board
+        putStrLn "Movimento IA:"
+        printBoard newBoard
+        playGame White newBoard
 
-    putStrLn "Digite a posição de destino para a peça (ex., '4e'):"
-    toInput <- getLine
-    let toPos = parsePosition toInput
+    else do        
+        putStrLn "Digite a posição referente a peça que você quer mexer (ex., '2e'):"
+        fromInput <- getLine
+        let fromPos = parsePosition fromInput
 
-    case (getPieceAtPosition fromPos board, colorOfPieceAtPosition fromPos board) of
-        (Just piece, Just pieceColor) | pieceColor == currentPlayer ->
-            case movePiece fromPos toPos board of
-                Just newBoard -> do
-                    let newPlayer = if currentPlayer == White then Black else White
-                    playGame newPlayer newBoard
-                Nothing -> do
-                    putStrLn "Movimento inválido! Tente novamente."
-                    playGame currentPlayer board
-        _ -> do
-            putStrLn "Movimento inválido! Tente novamente."
-            playGame currentPlayer board
+        putStrLn "Digite a posição de destino para a peça (ex., '4e'):"
+        toInput <- getLine
+        let toPos = parsePosition toInput
+
+        case (getPieceAtPosition fromPos board, colorOfPieceAtPosition fromPos board) of
+            (Just piece, Just pieceColor) | pieceColor == currentPlayer ->
+                case movePiece fromPos toPos board of
+                    Just newBoard -> do
+                        let newPlayer = if currentPlayer == White then Black else White
+                        playGame newPlayer newBoard
+                    Nothing -> do
+                        putStrLn "Movimento inválido! Tente novamente."
+                        playGame currentPlayer board
+            _ -> do
+                putStrLn "Movimento inválido! Tente novamente."
+                playGame currentPlayer board
 
 
 parsePosition :: String -> Position
@@ -271,6 +279,36 @@ isOpponentPiece :: Position -> Color -> Board -> Bool
 isOpponentPiece pos color board =
     case getPieceAtPosition pos board of
         Just (ChessPiece _ pieceColor) -> pieceColor /= color
+        Nothing -> False
+
+makeAIMove :: Color -> Board -> IO Board
+makeAIMove aiColor board = do
+    let aiPieces = filter (\pos -> colorOfPieceAtPosition pos board == Just aiColor) allPositions
+    selectedPiece <- randomElement aiPieces
+    let validMoves = getValidMoves selectedPiece board
+    selectedMove <- randomElement validMoves
+    case movePiece selectedPiece selectedMove board of
+        Just newBoard -> return newBoard
+        Nothing -> makeAIMove aiColor board
+
+randomElement :: [a] -> IO a
+randomElement xs = do
+    index <- randomRIO (0, length xs - 1)
+    return (xs !! index)
+
+allPositions :: [Position]
+allPositions = [Position x y | x <- [0..7], y <- [0..7]]
+
+getValidMoves :: Position -> Board -> [Position]
+getValidMoves fromPos board =
+    [toPos | toPos <- allPositions, isValidMove fromPos toPos board]
+
+isValidMove :: Position -> Position -> Board -> Bool
+isValidMove fromPos toPos board =
+    case getPieceAtPosition fromPos board of
+        Just piece -> case movePiece fromPos toPos board of
+            Just newBoard -> True
+            Nothing -> False
         Nothing -> False
 
 
