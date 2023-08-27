@@ -1,8 +1,9 @@
 module Main where
 import Data.Maybe (isNothing)
-import Data.Char (toLower) 
+import Data.Char (toLower)
 import System.Random
 import Text.Read (readMaybe)
+import Data.Maybe (isJust)
 
 data Piece = Pawn | Knight | Bishop | Rook | Queen | King deriving Show
 data Color = White | Black deriving (Eq, Show)
@@ -123,28 +124,28 @@ printBoard board = do
         putStr $ show rowNum ++ " |"
         printRow row
         putStrLn ""
-        
+
     printRow :: [Maybe ChessPiece] -> IO ()
     printRow [] = putStr "|"
     printRow (Nothing:xs) = putStr " . |" >> printRow xs
     printRow (Just piece:xs) = putStr (" " ++ showPiece piece ++ " |") >> printRow xs
-    
+
     showPiece :: ChessPiece -> String
-    showPiece (ChessPiece piece color) = 
+    showPiece (ChessPiece piece color) =
         let pieceSymbolWhite = case piece of
-                Pawn -> "♙" 
-                Knight -> "♘" 
-                Bishop -> "♗" 
-                Rook -> "♖" 
-                Queen -> "♕" 
-                King -> "♔" 
+                Pawn -> "♙"
+                Knight -> "♘"
+                Bishop -> "♗"
+                Rook -> "♖"
+                Queen -> "♕"
+                King -> "♔"
             pieceSymbolBlack = case piece of
-                Pawn -> "♟" 
-                Knight -> "♞" 
-                Bishop -> "♝" 
-                Rook -> "♜" 
-                Queen -> "♛" 
-                King -> "♚" 
+                Pawn -> "♟"
+                Knight -> "♞"
+                Bishop -> "♝"
+                Rook -> "♜"
+                Queen -> "♛"
+                King -> "♚"
         in if color == White then pieceSymbolWhite else pieceSymbolBlack
 
 -- Função para obter a cor oposta
@@ -213,7 +214,7 @@ playGame currentPlayer board isIA = do
     let gameResult = checkGameResult board currentPlayer
     case gameResult of
         Ongoing -> do
-            if currentPlayer == Black && isIA == True then do
+            if currentPlayer == Black && isIA then do
                 newBoard <- makeAIMove Black board
                 putStrLn "Movimento IA:"
                 printBoard newBoard
@@ -412,21 +413,25 @@ playAgainstPlayer = do
     putStrLn "Iniciando partida contra outro jogador..."
     playGame White initialBoard False
 
+
 simulateAIGame :: IO ()
-simulateAIGame numMoves = do
+simulateAIGame = do
     putStrLn "Simulando jogo entre duas IA's..."
     putStrLn "Digite o número de jogadas"
-    numMoves <- getLine
-    case numMoves of
-        verificar se o valor inputador é um inteiro -> playAIGame numMoves Black initialBoard
-        _ -> do
+    numMovesStr <- getLine
+    case isInteger numMovesStr of
+        True -> case readMaybe numMovesStr of
+            Just numMoves -> playAIGame numMoves Black initialBoard
+            Nothing -> do
+                putStrLn "Erro na conversão do número de jogadas."
+                simulateAIGame
+        False -> do
             putStrLn "Opção inválida."
             simulateAIGame
 
 isInteger :: String -> Bool
-isInteger str = case readMaybe str :: Maybe Integer of
-    Just _ -> True
-    Nothing -> False
+isInteger str = isJust (readMaybe str :: Maybe Integer)
+
 
 playAIGame :: Int -> Color -> Board -> IO ()
 playAIGame 0 _ board = do
