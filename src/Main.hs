@@ -314,6 +314,6 @@ isValidMove fromPos toPos board =
 
 main :: IO ()
 main = do
-    putStrLn "Welcome to Haskell Chess!"
+    putStrLn "Seja bem vindo ao Lambda Chess!"
     playGame White initialBoard
 
