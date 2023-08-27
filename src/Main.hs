@@ -2,6 +2,7 @@ module Main where
 import Data.Maybe (isNothing)
 import Data.Char (toLower) 
 import System.Random
+import Text.Read (readMaybe)
 
 data Piece = Pawn | Knight | Bishop | Rook | Queen | King deriving Show
 data Color = White | Black deriving (Eq, Show)
@@ -412,12 +413,26 @@ playAgainstPlayer = do
     playGame White initialBoard False
 
 simulateAIGame :: IO ()
-simulateAIGame = do
+simulateAIGame numMoves = do
     putStrLn "Simulando jogo entre duas IA's..."
-    playAIGame Black initialBoard
+    putStrLn "Digite o número de jogadas"
+    numMoves <- getLine
+    case numMoves of
+        verificar se o valor inputador é um inteiro -> playAIGame numMoves Black initialBoard
+        _ -> do
+            putStrLn "Opção inválida."
+            simulateAIGame
 
-playAIGame :: Color -> Board -> IO ()
-playAIGame currentPlayer board = do
+isInteger :: String -> Bool
+isInteger str = case readMaybe str :: Maybe Integer of
+    Just _ -> True
+    Nothing -> False
+
+playAIGame :: Int -> Color -> Board -> IO ()
+playAIGame 0 _ board = do
+    putStrLn "Limite de movimentos atingido. O jogo foi encerrado."
+    printBoard board
+playAIGame numMoves currentPlayer board = do
     putStrLn $ "Jogador atual: " ++ show currentPlayer
     printBoard board
 
@@ -428,12 +443,13 @@ playAIGame currentPlayer board = do
             putStrLn "Movimento IA:"
             printBoard newBoard
             let newPlayer = if currentPlayer == White then Black else White
-            playAIGame newPlayer newBoard
+            playAIGame (numMoves - 1) newPlayer newBoard
         Checkmate color -> putStrLn $ "Xeque-mate! O jogador " ++ show color ++ " venceu."
         Stalemate -> putStrLn "Afogamento! O jogo empatou."
         Draw -> putStrLn "Empate! O jogo empatou."
 
 main :: IO ()
 main = mainMenu
+
 
 
