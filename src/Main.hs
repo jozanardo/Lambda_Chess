@@ -128,11 +128,11 @@ playGame currentPlayer board = do
     putStrLn $ "Current Player: " ++ show currentPlayer
     printBoard board
 
-    putStrLn "Enter the position of the piece you want to move (e.g., '2e'):"
+    putStrLn "Digite a posição referente a peça que você quer mexer (ex., '2e'):"
     fromInput <- getLine
     let fromPos = parsePosition fromInput
 
-    putStrLn "Enter the destination position for the piece (e.g., '4e'):"
+    putStrLn "Digite a posição de destino para a peça (ex., '4e'):"
     toInput <- getLine
     let toPos = parsePosition toInput
 
@@ -143,10 +143,10 @@ playGame currentPlayer board = do
                     let newPlayer = if currentPlayer == White then Black else White
                     playGame newPlayer newBoard
                 Nothing -> do
-                    putStrLn "Invalid move! Try again."
+                    putStrLn "Movimento inválido! Tente novamente."
                     playGame currentPlayer board
         _ -> do
-            putStrLn "Invalid move! Try again."
+            putStrLn "Movimento inválido! Tente novamente."
             playGame currentPlayer board
 
 
