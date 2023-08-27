@@ -204,21 +204,21 @@ isSquareAttackedByPiece piecePos targetPos color board =
         _ -> False
 
 -- Função principal para controlar o loop do jogo
-playGame :: Color -> Board -> IO ()
-playGame currentPlayer board = do
+playGame :: Color -> Board -> Bool -> IO ()
+playGame currentPlayer board isIA = do
     putStrLn $ "Jogador atual: " ++ show currentPlayer
     printBoard board
 
     let gameResult = checkGameResult board currentPlayer
     case gameResult of
         Ongoing -> do
-            if currentPlayer == Black then do
+            if currentPlayer == Black && isIA == True then do
                 newBoard <- makeAIMove Black board
                 putStrLn "Movimento IA:"
                 printBoard newBoard
-                playGame White newBoard
-            else do        
-                putStrLn "Digite a posição referente a peça que você quer mexer (ex., '2e'):"
+                playGame White newBoard isIA
+            else do
+                putStrLn "Digite a posição referente a peça que você quer mover (ex., '2e'):"
                 fromInput <- getLine
                 let fromPos = parsePosition fromInput
 
@@ -231,17 +231,16 @@ playGame currentPlayer board = do
                         case movePiece fromPos toPos board of
                             Just newBoard -> do
                                 let newPlayer = if currentPlayer == White then Black else White
-                                playGame newPlayer newBoard
+                                playGame newPlayer newBoard isIA
                             Nothing -> do
                                 putStrLn "Movimento inválido! Tente novamente."
-                                playGame currentPlayer board
+                                playGame currentPlayer board isIA
                     _ -> do
                         putStrLn "Movimento inválido! Tente novamente."
-                        playGame currentPlayer board
+                        playGame currentPlayer board isIA
         Checkmate color -> putStrLn $ "Xeque-mate! O jogador " ++ show color ++ " venceu."
         Stalemate -> putStrLn "Afogamento! O jogo empatou."
         Draw -> putStrLn "Empate! O jogo empatou."
-
 
 parsePosition :: String -> Position
 parsePosition [row, col] = Position (colToIndex col) (read [row] - 1)
@@ -383,8 +382,58 @@ isValidMove fromPos toPos board =
         Nothing -> False
 
 
+mainMenu :: IO ()
+mainMenu = do
+    putStrLn "Seja bem-vindo ao Lambda Chess!"
+    putStrLn "Escolha uma opção:"
+    putStrLn "1. Jogar contra a IA"
+    putStrLn "2. Jogar contra outro jogador"
+    putStrLn "3. Simular jogo entre duas IA's"
+    putStrLn "4. Sair"
+
+    choice <- getLine
+    case choice of
+        "1" -> playAgainstAI
+        "2" -> playAgainstPlayer
+        "3" -> simulateAIGame
+        "4" -> putStrLn "Obrigado por jogar! Até logo."
+        _ -> do
+            putStrLn "Opção inválida. Por favor, escolha uma opção válida."
+            mainMenu
+
+playAgainstAI :: IO ()
+playAgainstAI = do
+    putStrLn "Iniciando partida contra a IA..."
+    playGame White initialBoard True
+
+playAgainstPlayer :: IO ()
+playAgainstPlayer = do
+    putStrLn "Iniciando partida contra outro jogador..."
+    playGame White initialBoard False
+
+simulateAIGame :: IO ()
+simulateAIGame = do
+    putStrLn "Simulando jogo entre duas IA's..."
+    playAIGame Black initialBoard
+
+playAIGame :: Color -> Board -> IO ()
+playAIGame currentPlayer board = do
+    putStrLn $ "Jogador atual: " ++ show currentPlayer
+    printBoard board
+
+    let gameResult = checkGameResult board currentPlayer
+    case gameResult of
+        Ongoing -> do
+            newBoard <- makeAIMove currentPlayer board
+            putStrLn "Movimento IA:"
+            printBoard newBoard
+            let newPlayer = if currentPlayer == White then Black else White
+            playAIGame newPlayer newBoard
+        Checkmate color -> putStrLn $ "Xeque-mate! O jogador " ++ show color ++ " venceu."
+        Stalemate -> putStrLn "Afogamento! O jogo empatou."
+        Draw -> putStrLn "Empate! O jogo empatou."
+
 main :: IO ()
-main = do
-    putStrLn "Seja bem vindo ao Lambda Chess!"
-    playGame White initialBoard
+main = mainMenu
+
 
