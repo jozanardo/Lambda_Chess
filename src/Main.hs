@@ -1,5 +1,6 @@
 module Main where
 import Data.Maybe (isNothing)
+import Data.Char (toLower) 
 
 data Piece = Pawn | Knight | Bishop | Rook | Queen | King deriving Show
 data Color = White | Black deriving (Eq, Show)
@@ -110,17 +111,34 @@ getPieceAtPosition (Position x y) board =
 
 printBoard :: Board -> IO ()
 printBoard board = do
-    putStrLn "   a  b  c  d  e  f  g  h"
-    putStrLn " +------------------------+"
+    putStrLn "    a   b   c   d   e   f   g   h"
+    putStrLn " +----------------------------------+"
     mapM_ printRowWithNumbers (zip [1..8] board)
-    putStrLn " +------------------------+"
+    putStrLn " +----------------------------------+"
   where
     printRowWithNumbers (rowNum, row) = do
         putStr $ show rowNum ++ " |"
         printRow row
+        putStrLn ""
         
-    printRow row = putStrLn $ concatMap (maybe " ." (\piece -> " " ++ showPiece piece)) row
-    showPiece (ChessPiece piece color) = (if color == White then "W" else "B") ++ show piece
+    printRow :: [Maybe ChessPiece] -> IO ()
+    printRow [] = putStr "|"
+    printRow (Nothing:xs) = putStr " . |" >> printRow xs
+    printRow (Just piece:xs) = putStr (" " ++ showPiece piece ++ " |") >> printRow xs
+    
+    showPiece :: ChessPiece -> String
+    showPiece (ChessPiece piece color) = 
+        let pieceSymbol = case piece of
+                Pawn -> "♙" -- Use ♟ for black pawn
+                Knight -> "♘" -- Use ♞ for black knight
+                Bishop -> "♗" -- Use ♝ for black bishop
+                Rook -> "♖" -- Use ♜ for black rook
+                Queen -> "♕" -- Use ♛ for black queen
+                King -> "♔" -- Use ♚ for black king
+        in if color == White then pieceSymbol else map toLower pieceSymbol
+
+-- Restante do código
+
 
 
 playGame :: Color -> Board -> IO ()
