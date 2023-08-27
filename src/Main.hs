@@ -7,6 +7,7 @@ data Piece = Pawn | Knight | Bishop | Rook | Queen | King deriving Show
 data Color = White | Black deriving (Eq, Show)
 data Position = Position Int Int deriving (Eq, Show)
 data ChessPiece = ChessPiece { piece :: Piece, color :: Color } deriving Show
+data GameResult = Ongoing | Checkmate Color | Stalemate | Draw deriving (Eq, Show)
 type Board = [[Maybe ChessPiece]]
 
 emptyBoard :: Board
@@ -129,51 +130,117 @@ printBoard board = do
     
     showPiece :: ChessPiece -> String
     showPiece (ChessPiece piece color) = 
-        let pieceSymbol = case piece of
-                Pawn -> "♙" -- Use ♟ for black pawn
-                Knight -> "♘" -- Use ♞ for black knight
-                Bishop -> "♗" -- Use ♝ for black bishop
-                Rook -> "♖" -- Use ♜ for black rook
-                Queen -> "♕" -- Use ♛ for black queen
-                King -> "♔" -- Use ♚ for black king
-        in if color == White then pieceSymbol else map toLower pieceSymbol
+        let pieceSymbolWhite = case piece of
+                Pawn -> "♙" 
+                Knight -> "♘" 
+                Bishop -> "♗" 
+                Rook -> "♖" 
+                Queen -> "♕" 
+                King -> "♔" 
+            pieceSymbolBlack = case piece of
+                Pawn -> "♟" 
+                Knight -> "♞" 
+                Bishop -> "♝" 
+                Rook -> "♜" 
+                Queen -> "♛" 
+                King -> "♚" 
+        in if color == White then pieceSymbolWhite else pieceSymbolBlack
 
--- Restante do código
+-- Função para obter a cor oposta
+oppositeColor :: Color -> Color
+oppositeColor White = Black
+oppositeColor Black = White
 
+-- Função para verificar o resultado do jogo
+checkGameResult :: Board -> Color -> GameResult
+checkGameResult board currentPlayer
+    | isCheckmate board currentPlayer = Checkmate (oppositeColor currentPlayer)
+    | isStalemate board currentPlayer = Stalemate
+    | otherwise = Ongoing
 
+-- Função para verificar se um jogador está em xeque-mate
+isCheckmate :: Board -> Color -> Bool
+isCheckmate board currentPlayer =
+    isKingInCheck board currentPlayer &&
+    not (any (\fromPos -> any (\toPos -> isValidMove fromPos toPos board) allPositions) (piecesOfColor currentPlayer board))
 
+-- Função para verificar se um jogador está em empate por afogamento
+isStalemate :: Board -> Color -> Bool
+isStalemate board currentPlayer =
+    not (isKingInCheck board currentPlayer) &&
+    all (\fromPos -> all (\toPos -> not (isValidMove fromPos toPos board)) allPositions) (piecesOfColor currentPlayer board)
+
+-- Função auxiliar para obter todas as posições das peças de uma determinada cor
+piecesOfColor :: Color -> Board -> [Position]
+piecesOfColor color board =
+    [pos | pos <- allPositions, colorOfPieceAtPosition pos board == Just color]
+
+-- Função para verificar se o rei de uma determinada cor está em xeque
+isKingInCheck :: Board -> Color -> Bool
+isKingInCheck board color =
+    let kingPosition = findKingPosition board color
+    in any (\position -> isAttackedByOpponent position color board) allPositions
+
+-- Função para encontrar a posição do rei de uma determinada cor no tabuleiro
+findKingPosition :: Board -> Color -> Position
+findKingPosition board color =
+    head [pos | pos <- allPositions, isKing pos]
+  where
+    isKing pos = case getPieceAtPosition pos board of
+        Just (ChessPiece King pieceColor) -> pieceColor == color
+        _ -> False
+
+-- Função para verificar se uma posição está sendo atacada por um oponente
+isAttackedByOpponent :: Position -> Color -> Board -> Bool
+isAttackedByOpponent targetPos attackerColor board =
+    any (\pos -> isSquareAttackedByPiece pos targetPos attackerColor board) allPositions
+
+-- Função para verificar se um quadrado está sendo atacado por uma peça
+isSquareAttackedByPiece :: Position -> Position -> Color -> Board -> Bool
+isSquareAttackedByPiece piecePos targetPos color board =
+    case getPieceAtPosition piecePos board of
+        Just (ChessPiece pieceType pieceColor) ->
+            pieceColor == color && isValidMove piecePos targetPos board
+        _ -> False
+
+-- Função principal para controlar o loop do jogo
 playGame :: Color -> Board -> IO ()
 playGame currentPlayer board = do
     putStrLn $ "Jogador atual: " ++ show currentPlayer
     printBoard board
 
-    if currentPlayer == Black then do
-        newBoard <- makeAIMove Black board
-        putStrLn "Movimento IA:"
-        printBoard newBoard
-        playGame White newBoard
+    let gameResult = checkGameResult board currentPlayer
+    case gameResult of
+        Ongoing -> do
+            if currentPlayer == Black then do
+                newBoard <- makeAIMove Black board
+                putStrLn "Movimento IA:"
+                printBoard newBoard
+                playGame White newBoard
+            else do        
+                putStrLn "Digite a posição referente a peça que você quer mexer (ex., '2e'):"
+                fromInput <- getLine
+                let fromPos = parsePosition fromInput
 
-    else do        
-        putStrLn "Digite a posição referente a peça que você quer mexer (ex., '2e'):"
-        fromInput <- getLine
-        let fromPos = parsePosition fromInput
+                putStrLn "Digite a posição de destino para a peça (ex., '4e'):"
+                toInput <- getLine
+                let toPos = parsePosition toInput
 
-        putStrLn "Digite a posição de destino para a peça (ex., '4e'):"
-        toInput <- getLine
-        let toPos = parsePosition toInput
-
-        case (getPieceAtPosition fromPos board, colorOfPieceAtPosition fromPos board) of
-            (Just piece, Just pieceColor) | pieceColor == currentPlayer ->
-                case movePiece fromPos toPos board of
-                    Just newBoard -> do
-                        let newPlayer = if currentPlayer == White then Black else White
-                        playGame newPlayer newBoard
-                    Nothing -> do
+                case (getPieceAtPosition fromPos board, colorOfPieceAtPosition fromPos board) of
+                    (Just piece, Just pieceColor) | pieceColor == currentPlayer ->
+                        case movePiece fromPos toPos board of
+                            Just newBoard -> do
+                                let newPlayer = if currentPlayer == White then Black else White
+                                playGame newPlayer newBoard
+                            Nothing -> do
+                                putStrLn "Movimento inválido! Tente novamente."
+                                playGame currentPlayer board
+                    _ -> do
                         putStrLn "Movimento inválido! Tente novamente."
                         playGame currentPlayer board
-            _ -> do
-                putStrLn "Movimento inválido! Tente novamente."
-                playGame currentPlayer board
+        Checkmate color -> putStrLn $ "Xeque-mate! O jogador " ++ show color ++ " venceu."
+        Stalemate -> putStrLn "Afogamento! O jogo empatou."
+        Draw -> putStrLn "Empate! O jogo empatou."
 
 
 parsePosition :: String -> Position
@@ -188,7 +255,6 @@ colorOfPieceAtPosition pos board =
         Just piece -> Just (color piece)
         Nothing -> Nothing
 
--- Tabuleiro de xadrez padrão
 initialBoard :: Board
 initialBoard =
     [ [Just (ChessPiece Rook Black), Just (ChessPiece Knight Black), Just (ChessPiece Bishop Black), Just (ChessPiece Queen Black), Just (ChessPiece King Black), Just (ChessPiece Bishop Black), Just (ChessPiece Knight Black), Just (ChessPiece Rook Black)]
@@ -247,10 +313,15 @@ isValidRookMove fromPos toPos board =
 
 
 isValidKingMove :: Position -> Position -> Board -> Bool
-isValidKingMove (Position x1 y1) (Position x2 y2) _ =
-    let deltaX = abs (x2 - x1)
-        deltaY = abs (y2 - y1)
-    in deltaX <= 1 && deltaY <= 1
+isValidKingMove fromPos@(Position x1 y1) toPos@(Position x2 y2) board
+    | isKingsideCastle fromPos toPos White board = canCastleKingside White board
+    | isQueensideCastle fromPos toPos White board = canCastleQueenside White board
+    | isKingsideCastle fromPos toPos Black board = canCastleKingside Black board
+    | isQueensideCastle fromPos toPos Black board = canCastleQueenside Black board
+    | otherwise =
+        let deltaX = abs (x2 - x1)
+            deltaY = abs (y2 - y1)
+        in deltaX <= 1 && deltaY <= 1
 
 -- Helper functions
 
