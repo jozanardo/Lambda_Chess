@@ -125,7 +125,7 @@ printBoard board = do
 
 playGame :: Color -> Board -> IO ()
 playGame currentPlayer board = do
-    putStrLn $ "Current Player: " ++ show currentPlayer
+    putStrLn $ "Jogador atual: " ++ show currentPlayer
     printBoard board
 
     putStrLn "Digite a posição referente a peça que você quer mexer (ex., '2e'):"
